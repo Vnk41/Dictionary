@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang='ru'>
+<head>
+    <title>Поисковик слов в файлах</title>
+    <script type="text/javascript" src="jquery.js"></script>
+    <style>
+        .WordsOutput{
+            border: 1px double black;
+            width: 200px;
+        }
+        .FileWithWordOutput{
+            border: 1px double black;
+            width: 200px;
+        }
+        .dictionaryButton{
+            border: 1px double black;
+            width: 200px;
+        }
+    </style>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<h1 id='Header' >
+    Поисковик слов в файлах
+</h1>
+<div class='__horizontalFlexContainer'>
+    <label class='contentButton'>
+        <input id='LoadFileButton' class='__invisible' type = 'file' title=''>
+    </label>
+    </label>
+    <div id='LoadFileName' >
+    </div>
+</div>
+
+    <div id='Table' class='MainSpan'  cellspacing='2' border='1 px solid grey'>
+        <div id='' class='MainSpan'>
+            <div class='__horizontalFlexContainer'>
+                <h4 id='EnterWord'  >
+                    Поисковая строка:
+                </h4>
+                <input id='DataInput' type='text' value="Введите слово">
+                <h4 id='ShowAllWordsButton' border = '1 px solid grey' class='WordsOutput'>
+                    Вывод слов
+                </h4>
+                <h4 id='SearcherButton' border='1 px solid grey' class='FileWithWordOutput'>
+                    Вывод файлов с указанным словом
+                </h4>
+            </div>
+        </div>
+        <h4 style=""> 'Выходные данные'</h4>
+        <div id='Console' class='MainSpan' >
+
+        </div>
+    </div>
+
+
+<script>
+    let LoadFileButton  = document.querySelector('#LoadFileButton');
+    let LoadFileName  = document.querySelector('#LoadFileName');
+    let ShowAllWordsButton  = document.querySelector('#ShowAllWordsButton');
+    let DataInput  = document.querySelector('#DataInput');
+    let SearcherButton  = document.querySelector('#SearcherButton');
+    let Console = document.querySelector('#Console');
+
+    const url = 'http://localhost:8085/untitled1_war_exploded/servlet';
+
+    function DeleteTableFromPage() {
+        while (Console.firstChild != null ){
+            Console.removeChild(Console.firstChild);
+        }
+    }
+
+    function UploadFile(file) {
+        var Form = new FormData();
+        Form.append('command', 'uploadFile');
+        Form.append('filename', file.name);
+        Form.append('file', file);
+        XHR = new XMLHttpRequest();
+        XHR.onreadystatechange = function(){
+            if(XHR.readyState == 4) {
+                if (XHR.status == 200) {
+                    LoadFileName.innerText = XHR.responseText;
+                } else {
+                    alert("Warning status is " + XHR.status);
+                }
+            }
+        };
+        XHR.open('POST', url, true);
+        XHR.send(Form);
+    }
+
+    function getDictionary(filename) {
+        var Form = new FormData();
+        Form.append('command', 'getDictionary');
+        Form.append('filename', filename);
+        XHR = new XMLHttpRequest();
+        XHR.onreadystatechange = function(){
+            if(XHR.readyState == 4){
+                if(XHR.status == 200){
+                    DeleteTableFromPage();
+                    Console.innerHTML = XHR.responseText;
+                }
+                else {
+                    alert("Warning status is " + XHR.status);
+                }
+            }
+        };
+        XHR.open('POST', url, true);
+        XHR.send(Form);
+    }
+
+    function GetAllWords() {
+        var Form = new FormData();
+        Form.append('command', 'getAllWords');
+        XHR = new XMLHttpRequest();
+        XHR.onreadystatechange = function(){
+            if(XHR.readyState == 4) {
+                if (XHR.status == 200) {
+                    DeleteTableFromPage();
+                    Console.innerHTML = XHR.responseText;
+                } else {
+                    alert("Warning status is " + XHR.status);
+                }
+            }
+        };
+        XHR.open('POST', url, true);
+        XHR.send(Form);
+    }
+
+
+    function GetFilesWhereWordExist(word) {
+        var Form = new FormData();
+        Form.append('command', 'getFilesWhereWordExist');
+        Form.append('word', word);
+        XHR = new XMLHttpRequest();
+        XHR.onreadystatechange = function(){
+            if(XHR.readyState == 4){
+                if(XHR.status == 200){
+                    DeleteTableFromPage();
+                    Console.innerHTML = XHR.responseText;
+                }
+                else {
+                    alert("Warning status is " + XHR.status);
+                }
+            }
+        };
+        XHR.open('POST', url, true);
+        XHR.send(Form);
+    }
+    function InitializeDictionaryButton() {
+        Console.innerHTML = "<th id = 'button 'class='dictionaryButton' '</th>";
+    }
+
+
+    window.onload = () => {
+        LoadFileButton.addEventListener('change', event => {
+            UploadFile(LoadFileButton .files.item(0));
+        });
+        ShowAllWordsButton.addEventListener('click', GetAllWords);
+        SearcherButton.addEventListener('click', event => {
+            GetFilesWhereWordExist(DataInput .value);
+        });
+    };
+</script>
+</body>
+</html>
