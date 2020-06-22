@@ -12,32 +12,37 @@ public class DB{
     //скачивание и выгрузка БД
     public void UploadDictionary (Main.Dictionary UploadingDictionary) throws SQLException {
         connection.setAutoCommit(false);
-        try {
-            PreparedStatement AddToFileData = connection.prepareStatement("INSERT INTO FileData(FileName, FilePath) VALUES( ? , ? )");
-            PreparedStatement AddToWord = connection.prepareStatement("INSERT INTO Word(WordName) VALUES( ? )");
-            PreparedStatement AddToWordInFile = connection.prepareStatement("INSERT INTO WordInFile(FileId, WordId, WordCounter) VALUES(?, ?, ?)");
 
-            //проверка на наличие файла
-            int TextFileID = GetTextFileID(UploadingDictionary.GetFileName());
+        String FileDataSqlQuery = "INSERT INTO FileData(FileName, FilePath) VALUES( ? , ? )";
+        String WordSqlQuery = "INSERT INTO Word(WordName) VALUES( ? )";
+        String WordInFileSqlQuery = "INSERT INTO WordInFile(FileId, WordId, WordCounter) VALUES(?, ?, ?)";
+
+        Map<String, Integer> dict = UploadingDictionary.GetDictionary();
+        int TextFileID = GetTextFileID(UploadingDictionary.GetFileName());
+        int FinalTextFileID = TextFileID;
+        final int[] WordID = {0};
+
+        try {
+            PreparedStatement AddToFileData = connection.prepareStatement(FileDataSqlQuery);
+            PreparedStatement AddToWord = connection.prepareStatement(WordSqlQuery);
+            PreparedStatement AddToWordInFile = connection.prepareStatement(WordInFileSqlQuery);
             if (TextFileID == 0){
                 AddToFileData.setString(1, UploadingDictionary.GetFileName());
                 AddToFileData.setString(2, UploadingDictionary.GetFilePath());
                 AddToFileData.execute();
                 TextFileID = GetTextFileID(UploadingDictionary.GetFileName());
+                TextFileID = GetTextFileID(UploadingDictionary.GetFileName());
             }
-
-            Map<String, Integer> dict = UploadingDictionary.GetDictionary();
-            int finalTextFileID = TextFileID;
             dict.forEach( (Key, Value) -> {
                 try{
-                    int wordID = GetWordID(Key);
-                    if (wordID == 0){
+                    WordID[0] = GetWordID(Key);
+                    if (WordID[0] == 0){
                         AddToWord.setString(1, Key);
                         AddToWord.execute();
-                        wordID = GetWordID(Key);
+                        WordID[0] = GetWordID(Key);
                     }
-                    AddToWordInFile.setInt(1, finalTextFileID);
-                    AddToWordInFile.setInt(2, wordID);
+                    AddToWordInFile.setInt(1, FinalTextFileID);
+                    AddToWordInFile.setInt(2, WordID[0]);
                     AddToWordInFile.setInt(3, Value);
                     AddToWordInFile.execute();
                 }catch (SQLException e){
@@ -56,7 +61,7 @@ public class DB{
     public Main.Dictionary DownloadDictionary(int TextFileID){
         String fileName = GetTextFileName(TextFileID);
         String filePath = GetTextFilePath(TextFileID);
-        Map<String, Integer> dict = GetMapOfDictionary(TextFileID);
+        Map<String, Integer> dict = GetDictionary(TextFileID);
         if (fileName != null && filePath != null && dict != null) {
             return new Main.Dictionary(filePath, fileName, dict);
         }
@@ -71,10 +76,10 @@ public class DB{
 
     public int GetTextFileID(String fileName){
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT Id FROM FileData WHERE FileName = ?");
-            Statement.setString(1, fileName);
-            ResultSet Res = Statement.executeQuery();
-            if(Res.next()) {
+            PreparedStatement stm = connection.prepareStatement("select Id from FileData where FileName = ?");
+            stm.setString(1, fileName);
+            ResultSet Res = stm.executeQuery();
+            if(Res.next() == true) {
                 return Res.getInt("Id");
             }
         } catch (SQLException e) {
@@ -84,23 +89,25 @@ public class DB{
     }
     public int GetWordID(String word){
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT Id FROM Word WHERE WordName = ?");
-            Statement.setString(1, word);
-            ResultSet Res = Statement.executeQuery();
-            if(Res.next()) {
-                return Res.getInt("Id");
+            //…
+            PreparedStatement stm = connection.prepareStatement("select Id from Word where WordName = ?");
+            stm.setString(1, word);
+            ResultSet rs = stm.executeQuery();
+            while(rs.next()) {
+                return rs.getInt("Id");
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             e.printStackTrace();
         }
         return 0;
     }
     public String GetTextFileName(int TextFileID){
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT FileName FROM FileData WHERE Id = ?");
-            Statement.setInt(1, TextFileID);
-            ResultSet Res = Statement.executeQuery();
-            if(Res.next()) {
+            PreparedStatement stm = connection.prepareStatement("select FileName from FileData where Id = ?");
+            stm.setInt(1, TextFileID);
+            ResultSet Res = stm.executeQuery();
+            if(Res.next() == true) {
                 return Res.getString("FileName");
             }
         } catch (SQLException e) {
@@ -110,11 +117,11 @@ public class DB{
     }
     public String GetTextFilePath(int TextFileID){
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT FilePath FROM FileData WHERE Id = ?");
-            Statement.setInt(1, TextFileID);
-            ResultSet rs = Statement.executeQuery();
-            if(rs.next()) {
-                return rs.getString("FilePath");
+            PreparedStatement stm = connection.prepareStatement("select FilePath from FileData where Id = ?");
+            stm.setInt(1, TextFileID);
+            ResultSet Res = stm.executeQuery();
+            if(Res.next() == true) {
+                return Res.getString("FilePath");
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -128,12 +135,12 @@ public class DB{
         int WordID = GetWordID(word);
         if (TextFileID == 0 || WordID == 0) return 0;
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT WordCounter FROM WordInFile WHERE FileId = ? AND WordId = ?");
-            Statement.setInt(1, TextFileID);
-            Statement.setInt(2, WordID);
-            ResultSet rs = Statement.executeQuery();
-            if(rs.next()) {
-                return rs.getInt("WordCounter");
+            PreparedStatement stm = connection.prepareStatement("select WordCounter from WordInFile where FileId = ? and WordId = ?");
+            stm.setInt(1, TextFileID);
+            stm.setInt(2, WordID);
+            ResultSet Res = stm.executeQuery();
+            if(Res.next() == true) {
+                return Res.getInt("WordCounter");
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -145,11 +152,11 @@ public class DB{
         if (TextFileID == 0) return 0;
         int WordsNumber = 0;
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT WordCounter FROM WordInFile WHERE FileId = ?");
-            Statement.setInt(1, TextFileID);
-            ResultSet rs = Statement.executeQuery();
-            while (rs.next()) {
-                WordsNumber += rs.getInt("WordCounter");
+            PreparedStatement stm = connection.prepareStatement("select WordCounter from WordInFile where FileId = ?");
+            stm.setInt(1, TextFileID);
+            ResultSet Res = stm.executeQuery();
+            while (Res.next() == true) {
+                WordsNumber += Res.getInt("WordCounter");
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -159,15 +166,12 @@ public class DB{
     public int GetWordsNumberInFile(String fileName){
         return GetWordsNumberInFile(GetTextFileID(fileName));
     }
-    public int GetUniqueWordsNumberInFile(String fileName){
-        return GetUniqueWordsNumberInFile(GetTextFileID(fileName));
-    }
     public int GetUniqueWordsNumberInFile(int TextFileID){
         int UniqueWordsNumber = 0;
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT WordCounter FROM WordInFile WHERE FileId = ?");
-            Statement.setInt(1, TextFileID);
-            ResultSet rs = Statement.executeQuery();
+            PreparedStatement stm = connection.prepareStatement("select WordCounter from WordInFile where FileId = ?");
+            stm.setInt(1, TextFileID);
+            ResultSet rs = stm.executeQuery();
             while (rs.next()) {
                 UniqueWordsNumber++;
             }
@@ -176,20 +180,18 @@ public class DB{
         }
         return UniqueWordsNumber;
     }
-    public Map<String, Integer> GetMapOfDictionary(String fileName){
-        return GetMapOfDictionary(GetTextFileID(fileName));
+    public int GetUniqueWordsNumberInFile(String fileName){
+        return GetUniqueWordsNumberInFile(GetTextFileID(fileName));
     }
-    public Map<String, Integer> GetMapOfDictionary(int TextFileID){
+    public Map<String, Integer> GetDictionary(String fileName){
+        return GetDictionary(GetTextFileID(fileName));
+    }
+    public Map<String, Integer> GetDictionary(int TextFileID){
         Map<String, Integer> map = new HashMap<String, Integer>();
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT \n" +
-                    "\tw.WordName,\n" +
-                    "\tWIF.WordCounter\n" +
-                    "FROM WordInFile WIF JOIN Word w ON WIF.WordId = w.Id\n" +
-                    "WHERE WIF.FileId = ?\n" +
-                    "ORDER BY WordName");
-            Statement.setInt(1, TextFileID);
-            ResultSet rs = Statement.executeQuery();
+            PreparedStatement stm = connection.prepareStatement("select w.WordName, wif.WordCounter from  WordInFile wif inner join Word w ON wif.FileId = w.Id where wif.FileId = ?");
+            stm.setInt(1, TextFileID);
+            ResultSet rs = stm.executeQuery();
             while (rs.next()) {
                 map.put(rs.getString("WordName"), rs.getInt("WordCounter"));
             }
@@ -205,32 +207,22 @@ public class DB{
     public Map<String, Integer> GetFilenamesWhereWordExists(int wordID){
         Map<String, Integer> map = new HashMap<String, Integer>();
         try {
-            PreparedStatement Statement = connection.prepareStatement("SELECT\n" +
-                    "\tFD.fileName,\n" +
-                    "\tWIF.WordCounter\n" +
-                    "FROM WordInFile WIF JOIN FileData FD ON WIF.FileId = FD.Id\n" +
-                    "WHERE WIF.WordId = ?\n" +
-                    "ORDER BY FD.FileName");
-            Statement.setInt(1, wordID);
-            ResultSet rs = Statement.executeQuery();
+            PreparedStatement stm = connection.prepareStatement("select fd.FileName, wif.WordCounter from  WordInFile wif inner join FileData fd ON wif.FileId = fd.Id where wif.WordId = ?");
+            stm.setInt(1, wordID);
+            ResultSet rs = stm.executeQuery();
             while (rs.next()) {
                 map.put(rs.getString("FileName"), rs.getInt("WordCounter"));
             }
-            map = map.entrySet().stream()
-                    .sorted(Map.Entry.comparingByKey())
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-                            (oldValue, newValue) -> oldValue, LinkedHashMap::new));
             return map;
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
     }
-
     public List<String> GetAvailableWords(){
         List<String> list = new ArrayList<String>();
         try {
-            PreparedStatement stm = connection.prepareStatement("SELECT WordName FROM Word ORDER BY WordName");
+            PreparedStatement stm = connection.prepareStatement("select WordName from Word order by WordName");
             ResultSet rs = stm.executeQuery();
             while (rs.next()) {
                 list.add(rs.getString("WordName"));

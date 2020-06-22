@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -11,33 +12,65 @@ public class Main{
 
     public static class Dictionary{
         private Map<String, Integer> UnitedDictionary = new HashMap<String, Integer>();
-        private String Text;
-        private String Path;
-        private String Name;
+        private String FileName;
+        private String FilePath;
+        private String TextFile;
         private int TotalWordCounter = 0;
-        private int ThreadTextStart = 0;
-        private int ThreadTextEnd = 0;
+        private static int WordCounter = 0;
 
-        void CreateDictionary(int NumberOfThreads){
+        void CreateDictionary(int NumberOfThreads, File file){
             ExecutorService executor = Executors.newCachedThreadPool();
             List<Future<Map<String, Integer>>> LocalDictionaries = new ArrayList<>();
+            int StringStart = 0;
+            int StringEnd = 0, StringEndPos = 0;
 
-            String[] textParts = new String[NumberOfThreads];
-            int NumberOfSymbolsInText = Text.length();
+            String[] SubStrings = new String[NumberOfThreads];
+            String AllFileTextInLine = "";//сбор текста в строку
+            Scanner Scanner = null;
+            try {
+                Scanner = new Scanner(file);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+            while(Scanner.hasNext()) {
+                AllFileTextInLine += Scanner.nextLine() + " ";
+            }
+            System.out.println(AllFileTextInLine);
+            int WordDivieCounter = 0;
+
+
+            for (int i = 0; i < AllFileTextInLine.length(); i++) {
+                if (AllFileTextInLine.charAt(i) == ' ') {
+                    WordDivieCounter++;
+                }
+            }
+            int NumberOfWords = WordDivieCounter;
+            WordDivieCounter = 0;
+            for (int i = 0; i < NumberOfThreads; i++) {
+                StringStart = StringEndPos;
+                StringEnd = (i+1)*NumberOfWords/NumberOfThreads;
+                if (i == NumberOfThreads - 1) {
+                    StringEnd = NumberOfWords;
+                }
+                for (int j = 0; j < AllFileTextInLine.length(); j++) {
+                    if (AllFileTextInLine.charAt(j) == ' ') {
+                        WordDivieCounter++;
+                        //System.out.println(WordCounterCounter);
+                    }
+                    if (WordDivieCounter == StringEnd) {
+                        StringEndPos = j;
+                        break;
+                    }
+                }
+                WordDivieCounter = 0;
+                SubStrings[i] = AllFileTextInLine.substring(StringStart, StringEndPos);
+                System.out.println(SubStrings[i]);
+
+            }
             try{
                 for(int i = 0; i < NumberOfThreads; i++){
-                    ThreadTextStart = ThreadTextEnd;
-                    ThreadTextEnd = (i+1)/NumberOfThreads*NumberOfSymbolsInText;
-                    if (i == NumberOfThreads - 1) {
-                        ThreadTextEnd = NumberOfSymbolsInText - 1;
-                    }
-                    if (Text.charAt(ThreadTextEnd) == ' ') {
-                        while (Text.charAt(ThreadTextEnd) != ' ')
-                            ThreadTextEnd++;
-                    }
-                    textParts[i] = Text.substring(ThreadTextStart, ThreadTextEnd);
 
-                    Future<Map<String, Integer>> TextPart = executor.submit(new DictionaryMaker(textParts[i]));
+                    Future<Map<String, Integer>> TextPart = executor.submit(new DictionaryMaker(SubStrings[i]));
                     LocalDictionaries.add(TextPart);
                     Map<String, Integer> localDictionary = LocalDictionaries.get(i).get();
                     localDictionary.forEach( (Key, Value) -> UnitedDictionary.merge(Key, Value, (PreValue, CurValue) -> PreValue + CurValue));
@@ -51,64 +84,124 @@ public class Main{
             finally {
                 executor.shutdown();
             }
+            for (Map.Entry UnitedDictionary : UnitedDictionary.entrySet()) {
+                System.out.println("Key: " + UnitedDictionary.getKey() + " Value: "
+                        + UnitedDictionary.getValue());
+            }
+            UnitedDictionary.forEach( (Key, Value) -> WordCounter += Value);
+            System.out.println("Уникальных слов: " + UnitedDictionary.size() + "\nВсего слов: " + WordCounter);
+
         }
 
-        public static class DictionaryMaker implements Callable<Map<String, Integer>> {
-            private String LocalText;
-            private int LocalCounter;
-
-            private Map<String, Integer> MakeDictionary(String text){
-                Map<String, Integer> LocalDictionary = new HashMap<String, Integer>();
-                String text_LowerCase = text.toLowerCase();
-                String[] words = text_LowerCase.replaceAll("[0123456789.,;:|+-<>(){}/|_–”«»='\"`~!@#№$%^&?—*]"," ")
-                        .split("\\s+");
-                for(String word: words){
-                    if (word.isEmpty() == false){
-                        if (LocalDictionary.containsKey(word)){
-                            LocalCounter = LocalDictionary.get(word);
-                            LocalCounter++;
-                            LocalDictionary.replace(word, LocalCounter);
-                        }
-                        else{
-                            LocalDictionary.put(word, 1);
-                        }
+        void CreateDictionaryForUploadButton(int NumberOfThreads, String AllFileInTextUpload) {
+            ExecutorService executor = Executors.newCachedThreadPool();
+            List<Future<Map<String, Integer>>> LocalDictionaries = new ArrayList<>();
+            int StringStart = 0;
+            int StringEnd = 0, StringEndPos = 0;
+            int WordDivideCounter = 0;
+            String[] SubStrings = new String[NumberOfThreads];
+            for (int i = 0; i < AllFileInTextUpload.length(); i++) {
+                if (AllFileInTextUpload.charAt(i) == ' ') {
+                    WordDivideCounter++;
+                }
+            }
+            int NumberOfWords = WordDivideCounter;
+            WordDivideCounter = 0;
+            for (int i = 0; i < NumberOfThreads; i++) {
+                StringStart = StringEndPos;
+                StringEnd = (i+1)*NumberOfWords/NumberOfThreads;
+                if (i == NumberOfThreads - 1) {
+                    StringEnd = NumberOfWords;
+                }
+                for (int j = 0; j < AllFileInTextUpload.length(); j++) {
+                    if (AllFileInTextUpload.charAt(j) == ' ') {
+                        WordDivideCounter++;
+                        //System.out.println(WordCounterCounter);
+                    }
+                    if (WordDivideCounter == StringEnd) {
+                        StringEndPos = j;
+                        break;
                     }
                 }
-                return LocalDictionary;
+                WordDivideCounter = 0;
+                SubStrings[i] = AllFileInTextUpload.substring(StringStart, StringEndPos);
+                System.out.println(SubStrings[i]);
             }
+
+            try{
+                for(int i = 0; i < NumberOfThreads; i++){
+                    Future<Map<String, Integer>> TextPart = executor.submit(new DictionaryMaker(SubStrings[i]));
+                    LocalDictionaries.add(TextPart);
+                    Map<String, Integer> localDictionary = LocalDictionaries.get(i).get();
+                    localDictionary.forEach( (Key, Value) -> UnitedDictionary.merge(Key, Value, (PreValue, CurValue) -> PreValue + CurValue));
+                }
+                UnitedDictionary.forEach( (Key, Value) -> TotalWordCounter += Value);
+
+            }
+            catch (InterruptedException | ExecutionException exception){
+
+            }
+            finally {
+                executor.shutdown();
+            }
+            UnitedDictionary.forEach( (Key, Value) -> WordCounter += Value);
+        }
+
+
+        public static class DictionaryMaker implements Callable<Map<String, Integer>> {
+            private String LocalThreadText;
+            Map <String, Integer> FileHashMapDictionary = new HashMap<>();
+            Map <String, Integer> ThreadDictionary = new HashMap<>();
+            private Map<String, Integer> MakeDictionary (String TextThread){
+                String [] words = TextThread.toLowerCase().replaceAll("[0123456789.,;:|+-<>(){}/|_–”«»='\\\"`~!@#№$%^&?—*]", "").split("\\s");
+                Integer count = 0;
+                for (String word : words) {
+                    if (word.isEmpty() == false) {
+                        count = ThreadDictionary.get(word);
+                        if(count == null) {
+                            count = 0;
+                        }
+                        count++;
+                        ThreadDictionary.put(word, count);
+                    }
+                }
+                System.out.println("Уникальных слов: " + ThreadDictionary.size() + "\nВсего слов: " + words.length);
+                return ThreadDictionary;
+            }
+
             public DictionaryMaker(String textPart){
-                LocalText = textPart;
+                LocalThreadText = textPart;
             }
             @Override
             public Map<String, Integer> call() throws Exception {
-                return MakeDictionary(LocalText);
+                return MakeDictionary(LocalThreadText);
             }
         }
 
         public Dictionary(File file, int threads) throws IOException {
-            Text = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-            Path = file.getAbsolutePath();
-            Name = file.getName();
-            CreateDictionary(threads);
+            TextFile = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+            FilePath = file.getAbsolutePath();
+            FileName = file.getName();
+            CreateDictionary(threads, file);
         }
         public Dictionary(String _FilePath, String _FileName, String InitText, int threads){
-            Path = _FilePath;
-            Name = _FileName;
-            Text = InitText;
-            CreateDictionary(threads);
+            FilePath = _FilePath;
+            FileName = _FileName;
+            TextFile = InitText;
+            CreateDictionaryForUploadButton(threads, TextFile);
         }
         public Dictionary(String _filePath, String _fileName, Map<String, Integer> _dictionary){
-            Path = _filePath;
-            Name = _fileName;
+            FilePath = _filePath;
+            FileName = _fileName;
             UnitedDictionary.putAll(_dictionary);
             UnitedDictionary.forEach( (Key, Value) -> TotalWordCounter += Value);
         }
 
         public String GetFilePath(){
-            return Path;
+            return FilePath;
         }
         public String GetFileName(){
-            return Name;
+            return FileName;
         }
         public Map<String, Integer>  GetDictionary(){
             return UnitedDictionary;
@@ -182,7 +275,7 @@ public class Main{
             String filePath = GetTextFilePath(TextFileID);
             Map<String, Integer> dict = GetDictionary(TextFileID);
             if (fileName != null && filePath != null && dict != null) {
-                    return new Dictionary(filePath, fileName, dict);
+                return new Dictionary(filePath, fileName, dict);
             }
             else return null;
         }
@@ -195,9 +288,9 @@ public class Main{
 
         public int GetTextFileID(String fileName){
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT Id FROM FileData WHERE FileName = ?");
-                Statement.setString(1, fileName);
-                ResultSet Res = Statement.executeQuery();
+                PreparedStatement stm = connection.prepareStatement("select Id from FileData where FileName = ?");
+                stm.setString(1, fileName);
+                ResultSet Res = stm.executeQuery();
                 if(Res.next() == true) {
                     return Res.getInt("Id");
                 }
@@ -208,22 +301,24 @@ public class Main{
         }
         public int GetWordID(String word){
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT Id FROM Word WHERE WordName = ?");
-                Statement.setString(1, word);
-                ResultSet Res = Statement.executeQuery();
-                if(Res.next() == true) {
-                    return Res.getInt("Id");
+                //…
+                PreparedStatement stm = connection.prepareStatement("select Id from Word where WordName = ?");
+                stm.setString(1, word);
+                ResultSet rs = stm.executeQuery();
+                while(rs.next()) {
+                    return rs.getInt("Id");
                 }
-            } catch (SQLException e) {
+            }
+            catch (SQLException e) {
                 e.printStackTrace();
             }
             return 0;
         }
         public String GetTextFileName(int TextFileID){
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT FileName FROM FileData WHERE Id = ?");
-                Statement.setInt(1, TextFileID);
-                ResultSet Res = Statement.executeQuery();
+                PreparedStatement stm = connection.prepareStatement("select FileName from FileData where Id = ?");
+                stm.setInt(1, TextFileID);
+                ResultSet Res = stm.executeQuery();
                 if(Res.next() == true) {
                     return Res.getString("FileName");
                 }
@@ -234,9 +329,9 @@ public class Main{
         }
         public String GetTextFilePath(int TextFileID){
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT FilePath FROM FileData WHERE Id = ?");
-                Statement.setInt(1, TextFileID);
-                ResultSet Res = Statement.executeQuery();
+                PreparedStatement stm = connection.prepareStatement("select FilePath from FileData where Id = ?");
+                stm.setInt(1, TextFileID);
+                ResultSet Res = stm.executeQuery();
                 if(Res.next() == true) {
                     return Res.getString("FilePath");
                 }
@@ -252,10 +347,10 @@ public class Main{
             int WordID = GetWordID(word);
             if (TextFileID == 0 || WordID == 0) return 0;
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT WordCounter FROM WordInFile WHERE FileId = ? AND WordId = ?");
-                Statement.setInt(1, TextFileID);
-                Statement.setInt(2, WordID);
-                ResultSet Res = Statement.executeQuery();
+                PreparedStatement stm = connection.prepareStatement("select WordCounter from WordInFile where FileId = ? and WordId = ?");
+                stm.setInt(1, TextFileID);
+                stm.setInt(2, WordID);
+                ResultSet Res = stm.executeQuery();
                 if(Res.next() == true) {
                     return Res.getInt("WordCounter");
                 }
@@ -269,9 +364,9 @@ public class Main{
             if (TextFileID == 0) return 0;
             int WordsNumber = 0;
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT WordCounter FROM WordInFile WHERE FileId = ?");
-                Statement.setInt(1, TextFileID);
-                ResultSet Res = Statement.executeQuery();
+                PreparedStatement stm = connection.prepareStatement("select WordCounter from WordInFile where FileId = ?");
+                stm.setInt(1, TextFileID);
+                ResultSet Res = stm.executeQuery();
                 while (Res.next() == true) {
                     WordsNumber += Res.getInt("WordCounter");
                 }
@@ -286,9 +381,9 @@ public class Main{
         public int GetUniqueWordsNumberInFile(int TextFileID){
             int UniqueWordsNumber = 0;
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT WordCounter FROM WordInFile WHERE FileId = ?");
-                Statement.setInt(1, TextFileID);
-                ResultSet rs = Statement.executeQuery();
+                PreparedStatement stm = connection.prepareStatement("select WordCounter from WordInFile where FileId = ?");
+                stm.setInt(1, TextFileID);
+                ResultSet rs = stm.executeQuery();
                 while (rs.next()) {
                     UniqueWordsNumber++;
                 }
@@ -306,14 +401,9 @@ public class Main{
         public Map<String, Integer> GetDictionary(int TextFileID){
             Map<String, Integer> map = new HashMap<String, Integer>();
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT \n" +
-                        "\tw.WordName,\n" +
-                        "\tWIF.WordCounter\n" +
-                        "FROM WordInFile WIF JOIN Word w ON WIF.WordId = w.Id\n" +
-                        "WHERE WIF.FileId = ?\n" +
-                        "ORDER BY WordName");
-                Statement.setInt(1, TextFileID);
-                ResultSet rs = Statement.executeQuery();
+                PreparedStatement stm = connection.prepareStatement("select w.WordName, wif.WordCounter from  WordInFile wif inner join Word w ON wif.FileId = w.Id where wif.FileId = ?");
+                stm.setInt(1, TextFileID);
+                ResultSet rs = stm.executeQuery();
                 while (rs.next()) {
                     map.put(rs.getString("WordName"), rs.getInt("WordCounter"));
                 }
@@ -329,14 +419,9 @@ public class Main{
         public Map<String, Integer> GetFilenamesWhereWordExists(int wordID){
             Map<String, Integer> map = new HashMap<String, Integer>();
             try {
-                PreparedStatement Statement = connection.prepareStatement("SELECT\n" +
-                        "\tFD.fileName,\n" +
-                        "\tWIF.WordCounter\n" +
-                        "FROM WordInFile WIF JOIN FileData FD ON WIF.FileId = FD.Id\n" +
-                        "WHERE WIF.WordId = ?\n" +
-                        "ORDER BY FD.FileName");
-                Statement.setInt(1, wordID);
-                ResultSet rs = Statement.executeQuery();
+                PreparedStatement stm = connection.prepareStatement("select fd.FileName, wif.WordCounter from  WordInFile wif inner join FileData fd ON wif.FileId = fd.Id where wif.WordId = ?");
+                stm.setInt(1, wordID);
+                ResultSet rs = stm.executeQuery();
                 while (rs.next()) {
                     map.put(rs.getString("FileName"), rs.getInt("WordCounter"));
                 }
@@ -349,7 +434,7 @@ public class Main{
         public List<String> GetAvailableWords(){
             List<String> list = new ArrayList<String>();
             try {
-                PreparedStatement stm = connection.prepareStatement("SELECT WordName FROM Word ORDER BY WordName");
+                PreparedStatement stm = connection.prepareStatement("select WordName from Word order by WordName");
                 ResultSet rs = stm.executeQuery();
                 while (rs.next()) {
                     list.add(rs.getString("WordName"));

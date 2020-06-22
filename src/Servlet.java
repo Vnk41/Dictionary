@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.io.File;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
